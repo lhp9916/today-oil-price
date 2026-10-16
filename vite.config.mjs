@@ -60,6 +60,13 @@ function inlineSingleFilePlugin() {
 export default defineConfig({
   plugins: [vue(), inlineSingleFilePlugin()],
   base: './',
+  resolve: {
+    // 省市与油品定义放在 public/shared 下，供 preload（CommonJS）与渲染层共用。
+    // preload 用相对路径 require，渲染层通过此 alias 引入。
+    alias: {
+      '@oil-data': resolve(process.cwd(), 'public/shared/oil-data.json')
+    }
+  },
   server: {
     // uTools 内置浏览器按 127.0.0.1 访问，必须显式绑定 IPv4，
     // 否则 Vite 默认只监听 [::1]，开发模式会打开空白页

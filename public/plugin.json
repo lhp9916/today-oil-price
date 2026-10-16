@@ -2,12 +2,52 @@
   "pluginName": "今日油价",
   "description": "一键查询全国各省市最新成品油价格，自动定位所在省份并记住上次选择，支持多价区切换、近一年历史油价与调价日历。",
   "author": "刘海朋",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "index.html",
   "preload": "preload.js",
   "logo": "logo.png",
   "development": {
     "main": "http://127.0.0.1:5173"
+  },
+  "tools": {
+    "oil_price_get": {
+      "description": "查询指定省市当前最新的成品油零售价格，含 92/95/98 号汽油、爱跑系列、0 号及各负号柴油、天然气等标号，并给出该次调价的涨跌幅度。不传 province 时优先使用用户上次选择的省市，若没有记录则按网络位置自动定位。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "province": {
+            "type": "string",
+            "description": "省市名称或编号，例如「湖北」「广东」「北京」，也可传省份编号如「42」。不传则使用用户上次选择的省市或自动定位。"
+          }
+        }
+      }
+    },
+    "oil_price_history": {
+      "description": "查询指定省市近一年的成品油调价历史记录，按调价日期倒序返回每次调价后的各标号价格。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "province": {
+            "type": "string",
+            "description": "省市名称或编号，例如「湖北」「广东」。不传则使用用户上次选择的省市或自动定位。"
+          },
+          "limit": {
+            "type": "number",
+            "description": "返回的调价记录条数，默认 12，最大 24（近一年约 24 次调价）。"
+          }
+        }
+      }
+    },
+    "oil_price_provinces": {
+      "description": "列出本插件支持查询油价的全部省市及其编号。",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
   },
   "features": [
     {

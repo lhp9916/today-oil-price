@@ -393,3 +393,163 @@ window.services = {
     throw lastError || new Error('自动定位失败')
   })
 }
+
+// ---------------------------------------------------------------------------
+// MCP / AI 工具注册
+// 声明见 plugin.json 的 tools 字段；此处注册实现，供 uTools 的 MCP 服务
+// 与 utools.ai() 的 Function Calling 调用。
+// ---------------------------------------------------------------------------
+
+// 省市与油品定义从共享数据读取，避免与渲染层的 src/api/provinces.js 重复。
+// 该文件同时被渲染层通过 Vite alias 引入，构建时会一并拷贝到 dist。
+const shared = require('./shared/oil-data.json')
+const PROVINCES = shared.provinces
+// 工具返回给模型的标号名称与单位（名称用 toolLabel，避免拼接歧义）
+const TOOL_OIL_TYPES = shared.oilTypes.map((item) => ({
+  flag: item.flag,
+  label: item.toolLabel,
+  price: item.priceField,
+  status: item.statusField,
+  unit: item.measure
+}))
+
+const normalizeName = (value) =>
+  String(value || '').trim().toLowerCase().replace(/[\s_-]/g, '')
+
+// 接受省名、全称或编号，统一解析为 provinceId（与渲染层 findProvinceByName 同源逻辑）
+function resolveProvinceId(input) {
+  const raw = String(input == null ? '' : input).trim()
+  if (!raw) return ''
+  if (/^\d{2,5}$/.test(raw)) return raw
+
+  const exact = PROVINCES.find((item) => item.name === raw)
+  if (exact) return exact.id
+
+  const prefix = PROVINCES.find((item) => raw.startsWith(item.name))
+  if (prefix) return prefix.id
+
+  const included = PROVINCES.find((item) => raw.includes(item.name))
+  if (included) return included.id
+
+  const key = normalizeName(raw)
+  const byAlias = PROVINCES.find((item) =>
+    (item.alias || []).some((alias) => normalizeName(alias) === key)
+  )
+  return byAlias ? byAlias.id : ''
+}
+
+// 0.00 视为未更新，返回 null 而不是 0，避免模型误读
+const toolPrice = (value) => {
+  if (value == null || value === '' || Number(value) === 0) return null
+  const num = Number(value)
+  return Number.isNaN(num) ? null : Number(num.toFixed(2))
+}
+
+const toolDelta = (value) => {
+  if (value == null || value === '') return null
+  const num = Number(value)
+  if (Number.isNaN(num) || num === 0) return null
+  return Number(num.toFixed(2))
+}
+
+// 把某个价区的原始数据整理成对模型友好的结构
+function formatArea(area) {
+  const check = area.check || {}
+  const price = area.price || {}
+  const oils = TOOL_OIL_TYPES.filter((item) => check[item.flag] === 'Y')
+    .map((item) => ({
+      name: item.label,
+      price: toolPrice(price[item.price]),
+      unit: item.unit,
+      change: toolDelta(price[item.status])
+    }))
+    .filter((item) => item.price != null)
+
+  return {
+    area_name: area.areaName || '',
+    oils,
+    price_date: area.priceDate || ''
+  }
+}
+
+// 工具共用的取数逻辑：优先参数 → 上次选择 → 自动定位
+async function resolveTargetProvince(input) {
+  const requested = resolveProvinceId(input)
+  if (requested) return requested
+
+  // 读取用户在插件里记住的省市（与渲染层共用同一存储键）
+  try {
+    const saved = utools.dbStorage.getItem('oil-price/province')
+    const savedId = saved && saved.id ? String(saved.id) : ''
+    if (savedId) return savedId
+  } catch (err) {
+    /* 存储不可用时继续走自动定位 */
+  }
+
+  const located = await window.services.detectProvince()
+  if (located && located.ok && located.data) {
+    const matched =
+      resolveProvinceId(located.data.region) || resolveProvinceId(located.data.city)
+    if (matched) return matched
+  }
+  throw new Error('无法确定要查询的省市，请显式传入 province 参数')
+}
+
+async function toolGetOilPrice(params) {
+  const provinceId = await resolveTargetProvince(params && params.province)
+  const result = await window.services.getProvinceOilPrice(provinceId)
+  if (!result.ok) throw new Error(result.error)
+
+  const data = result.data
+  return {
+    province: data.provinceName,
+    data_date: data.toDay,
+    // 上游尚未发布当期价格时，会回退到最近一次已公布的调价
+    is_latest_published: !data.isFallback,
+    note: data.isFallback
+      ? `该省市当期油价尚未发布，以下为 ${data.priceDate} 起执行的最近一次公布价格`
+      : '',
+    areas: (data.areas || []).map(formatArea)
+  }
+}
+
+async function toolGetOilPriceHistory(params) {
+  const provinceId = await resolveTargetProvince(params && params.province)
+  const result = await window.services.getHistoryOilPrice(provinceId)
+  if (!result.ok) throw new Error(result.error)
+
+  const limit = Math.min(Math.max(Number((params && params.limit) || 12) || 12, 1), 24)
+  const data = result.data
+
+  return {
+    province: data.provinceName,
+    areas: (data.areas || []).map((area) => {
+      const check = area.check || {}
+      const oils = TOOL_OIL_TYPES.filter((item) => check[item.flag] === 'Y')
+      return {
+        area_name: area.areaName || '',
+        records: (area.records || []).slice(0, limit).map((row) => {
+          const prices = {}
+          oils.forEach((item) => {
+            const value = toolPrice(row[item.price])
+            if (value != null) prices[item.label] = value
+          })
+          return { date: row.STR_START_DATE || row.queryDate || '', prices }
+        })
+      }
+    })
+  }
+}
+
+async function toolListProvinces() {
+  return {
+    provinces: PROVINCES.map((item) => ({ id: item.id, name: item.name })),
+    note: '查询油价时可直接传省市名称，例如「湖北」。'
+  }
+}
+
+if (typeof utools !== 'undefined' && typeof utools.registerTool === 'function') {
+  utools.registerTool('oil_price_get', toolGetOilPrice)
+  utools.registerTool('oil_price_history', toolGetOilPriceHistory)
+  utools.registerTool('oil_price_provinces', toolListProvinces)
+}
