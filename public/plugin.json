@@ -1,0 +1,23 @@
+{
+  "pluginName": "今日油价",
+  "description": "一键查询全国各省市最新成品油价格，自动定位所在省份并记住上次选择，支持多价区切换、近一年历史油价与调价日历。",
+  "author": "刘海朋",
+  "version": "1.0.0",
+  "main": "index.html",
+  "preload": "preload.js",
+  "logo": "logo.png",
+  "development": {
+    "main": "http://127.0.0.1:5173"
+  },
+  "features": [
+    {
+      "code": "oil-price",
+      "explain": "今日油价：查看各省市汽柴油价格、历史油价与调价日历",
+      "cmds": [
+        "油价",
+        "今日油价",
+        "加油"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+:root {
+  --bg: #ecf3fe;
+  --surface: #ffffff;
+  --primary: #5597fe;
+  --primary-deep: #2c7eff;
+  --head-from: #6ba4fe;
+  --head-to: #4d8bfa;
+  --text: #373737;
+  --text-weak: #444444;
+  --muted: #9a9a9a;
+  --muted-strong: #999494;
+  --up: #ff3737;
+  --down: #5597fe;
+  --border: rgba(156, 162, 200, 0.32);
+  --shadow: 0 1px 10px rgba(156, 162, 200, 0.5);
+  --shadow-soft: 0 1px 10px rgba(156, 162, 200, 0.35);
+  --radius-card: 12px;
+  --radius-chip: 10px;
+  --radius-pill: 30px;
+  --content-max: 640px;
+  --font: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', Tahoma, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-weak);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app {
+  height: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+ul,
+li,
+p {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+li {
+  list-style: none;
+}
+
+em,
+i {
+  font-style: normal;
+}
+
+button {
+  font-family: inherit;
+  outline: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input,
+button,
+textarea {
+  border-radius: 0;
+}
+
+/* 通用卡片：与原站白色圆角 + 淡蓝阴影一致 */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  color: #454444;
+  padding-left: 10px;
+  position: relative;
+}
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--primary-deep);
+  transform: translateY(-50%);
+}
+
+.delta-up {
+  color: var(--up);
+}
+
+.delta-down {
+  color: var(--down);
+}
+
+/* 滚动条：保持界面干净，不喧宾夺主 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 150, 200, 0.35);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
